@@ -1,0 +1,34 @@
+---
+version: 2
+models:
+  - name: customer_orders
+    columns:
+      - name: customer_id
+        data_tests: [not_null]
+      - name: order_id
+        data_tests: [unique]
+      - name: order_status
+        data_tests:
+          - accepted_values:
+              values:
+                - delivered
+                - invoiced
+                - shipped
+                - processing
+                - canceled
+                - unavailable
+  - name: order_status_pivot
+    columns:
+      - name: order_year
+      - name: delivered
+      - name: shipped
+      - name: unavailable
+      - name: canceled
+      - name: processing
+      - name: invoiced
+    data_tests:
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          column_A: delivered
+          column_B: invoiced
+          or_equal: false
+          row_condition: order_year > 2018

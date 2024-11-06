@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: dbt_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbtuser -d dbtpg"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  data_init:
+    image: python:3.11-slim
+    container_name: pg_init_data_load
+    volumes:
+      - .:/usr/app
+    working_dir: /usr/app/dbt_project/database/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: >
+      bash -c "pip install sqlalchemy pandas &&
+               python insert_data.py"
+
+  dbt:
+    image: python:3.11-slim # Use a base Python image for more control
+    container_name: dbt_core
+    ports:
+      - "3000:8080" # Maps container's port 8080 to local machine's port 8080
+    volumes:
+      - .:/usr/app # Mounts your project directory to the container
+    working_dir: /usr/app/dbt_project
+    depends_on:
+      data_init:
+        condition: service_completed_successfully
+    environment:
+      DBT_PROFILES_DIR: /usr/app/dbt_project # Ensures dbt uses your profiles.yml file from the project directory
+    entrypoint: ["tail", "-f", "/dev/null"] # Keeps the dbt container running
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:
