@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:latest
     container_name: dbt_postgres
     environment:
       POSTGRES_USER: ${DB_USER}
